@@ -21,9 +21,13 @@ def gmail_authenticate():
     # time.
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    elif os.path.exists("credentials.json") == False:
+        print("Not token.json or credentials.json found")
+        return False
+    
     # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
+    if not creds or creds.token_state == 'INVALID':
+        if creds and (creds.token_state != 'FRESH') and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
@@ -33,6 +37,7 @@ def gmail_authenticate():
         # Save the credentials for the next run
         with open("token.json", "w") as token:
             token.write(creds.to_json())
+
     return build("gmail", "v1", credentials=creds)
 
 # Get Email Address
@@ -105,30 +110,40 @@ def gmail_downloadPdfs(service, pdfIdsMsg: dict, folderPath: str):
 
 # Print folder Pdfs
 def print_pdf(folderPath: str):
+    count = 0
     for file in os.listdir(folderPath):
         if file.lower().endswith('.pdf') == True:
+            count += 1
+            print("Print:", file)
             filePath = os.path.join(folderPath, file)
             os.startfile(filePath, "print")
-            print(filePath)
+    print("Files printed:", count)
 
 
 def main():
     print("Execute Print Email")
 
     try:
+        # Get access to gmail service from credentials
         service = gmail_authenticate()
+        if service == False:
+            return
+        
         gmail_readEmailAddress(service)
+
+        # Check for unread Pdfs
         pdfIdsMsg = gmail_readUnreadMessagesWithPdfs(service)
-        if pdfIdsMsg != 0:
-            folderPath = createDownloadFolder()
-            gmail_downloadPdfs(service, pdfIdsMsg, folderPath)
-            print_pdf(folderPath)
+        if pdfIdsMsg == 0:
+            return
+        
+        # Download Pdfs and print them
+        folderPath = createDownloadFolder()
+        gmail_downloadPdfs(service, pdfIdsMsg, folderPath)
+        print_pdf(folderPath)
 
     except HttpError as error:
         # TODO(developer) - Handle errors from gmail API.
         print(f"An error occurred: {error}")
-
-
 
 
 if __name__ == '__main__':
