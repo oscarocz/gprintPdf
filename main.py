@@ -119,6 +119,15 @@ def print_pdf(folderPath: str):
             os.startfile(filePath, "print")
     print("Files printed:", count)
 
+# Read unread Messages with Pdfs Attached
+def gmail_checkNumberUnreadMessages(service):
+    results = service.users().messages().list(userId='me', labelIds=['INBOX'], q='is:unread').execute()
+    if results['resultSizeEstimate'] != 0:
+        print('Inbox Unread Mails:', results['resultSizeEstimate'])
+
+    results = service.users().messages().list(userId='me', labelIds=['SPAM'], q='is:unread').execute()
+    if results['resultSizeEstimate'] != 0:
+        print('Spam Unread Mails:', results['resultSizeEstimate'])
 
 def main():
     print("Execute Print Email")
@@ -133,13 +142,13 @@ def main():
 
         # Check for unread Pdfs
         pdfIdsMsg = gmail_readUnreadMessagesWithPdfs(service)
-        if pdfIdsMsg == 0:
-            return
-        
-        # Download Pdfs and print them
-        folderPath = createDownloadFolder()
-        gmail_downloadPdfs(service, pdfIdsMsg, folderPath)
-        print_pdf(folderPath)
+        if pdfIdsMsg != 0:
+            # Download Pdfs and print them
+            folderPath = createDownloadFolder()
+            gmail_downloadPdfs(service, pdfIdsMsg, folderPath)
+            print_pdf(folderPath)
+
+        gmail_checkNumberUnreadMessages(service)
 
     except HttpError as error:
         # TODO(developer) - Handle errors from gmail API.
